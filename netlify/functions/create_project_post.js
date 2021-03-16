@@ -7,6 +7,7 @@ exports.handler = async function(event) {
   let userId = body.userId
   let username = body.username
   let imageUrl = body.imageUrl
+  //let projectId = body.project
   
   console.log(`user: ${userId}`)
   console.log(`imageUrl: ${imageUrl}`)
@@ -15,6 +16,7 @@ exports.handler = async function(event) {
     userId: userId,
     username: username, 
     imageUrl: imageUrl, 
+    //project: projectId,
     created: firebase.firestore.FieldValue.serverTimestamp()
   }
 

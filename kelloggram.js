@@ -1,5 +1,7 @@
 
 firebase.auth().onAuthStateChanged(async function(user) {
+  let projectId
+
   if (user) {
     // Signed in
     console.log('signed in')
@@ -18,12 +20,19 @@ firebase.auth().onAuthStateChanged(async function(user) {
       document.location.href = 'index.html'
     })
 
-    // Listen for the form submit and create/render the new post
+    //posted on slack for help passing a variable outside of an event listener and function
+    let formCheck ='no'
+    //let projectId
+    let formStatus = document.querySelector('#image-url').id
+    console.log(formStatus)
+
+      // Listen for the form submit and create/render the new post
     document.querySelector('form').addEventListener('submit', async function(event) {
       event.preventDefault()
-      let postUsername = user.displayName
+      if(formStatus == 'image-url') {
+        let postUsername = user.displayName
       let postImageUrl = document.querySelector('#image-url').value
-      let response = await fetch('/.netlify/functions/create_project_post', {
+      let response = await fetch('/.netlify/functions/create_post', {
         method: 'POST',
         body: JSON.stringify({
           userId: user.uid,
@@ -34,7 +43,32 @@ firebase.auth().onAuthStateChanged(async function(user) {
       let post = await response.json()
       document.querySelector('#image-url').value = '' // clear the image url field
       renderPost(post)
+      console.log(post.id)
+    } else {
+
+      // Listen for the form submit and create/render the new post
+      document.querySelector('form').addEventListener('submit', async function(event) {
+        event.preventDefault()
+        let postUsername = user.displayName
+        console.log(projectId)
+        console.log(formCheck)
+        let postImageUrl = document.querySelector('#image-url2').value
+        let response = await fetch('/.netlify/functions/create_project_post', {
+          method: 'POST',
+          body: JSON.stringify({
+            //project: projectId,
+            userId: user.uid,
+            username: postUsername,
+            imageUrl: postImageUrl
+          })
+        })
+        let post = await response.json()
+        document.querySelector('#image-url2').value = '' // clear the image url field
+        renderProjectPost(post)
+      })
+    }
     })
+    
 
     let response = await fetch('/.netlify/functions/get_posts')
     let posts = await response.json()
@@ -42,6 +76,8 @@ firebase.auth().onAuthStateChanged(async function(user) {
       let post = posts[i]
       renderPost(post)
     }
+      
+    
 
    /*  // On the projects HTML page, listen for the form submit and create/render the new post
     document.querySelector('form').addEventListener('submit', async function(event) {
@@ -103,6 +139,8 @@ firebase.auth().onAuthStateChanged(async function(user) {
 //     { username: 'ben', text: 'fake news' }
 //   ]
 // }
+
+// render designer posts
 async function renderPost(post) {
   let postId = post.id
   document.querySelector('.posts').insertAdjacentHTML('beforeend', `
@@ -116,73 +154,77 @@ async function renderPost(post) {
       </div>
 
       <div class="text-2xl md:mx-0 mx-4">
-           <button class="up-button"><img src="http://www.pngmart.com/files/10/Thumbs-UP-PNG-Transparent-Image.png" width="20" height="20" border="0" alt="javascript button"></button>
-            <span class="ups">${post.ups}</span>
+           <button class="submit-button"><img src="http://www.pngmart.com/files/10/Thumbs-UP-PNG-Transparent-Image.png" width="20" height="20" border="0" alt="javascript button">Submit a Design!</button>
+            
+      </div>
+
+     
       
-            <button class="down-button"><img src="https://www.nicepng.com/png/detail/223-2238128_thumbs-down-emoji-discord-emoji-thumbs-down.png" width="20" height="20" border="0" alt="javascript button"></button>
-            <span class="downs">${post.downs}</span>     
-      </div>
 
-      <div class="comments text-sm md:mx-0 mx-4 space-y-2">
-        ${renderComments(post.comments)}
-      </div>
-
-      <div class="w-full md:mx-0 mx-4">
-        ${renderCommentForm()}
-      </div>
-    </div>
+      
   `)
-    // listen for the up button on this post
-  let upButton = document.querySelector(`.post-${post.id} .up-button`)
-  upButton.addEventListener('click', async function(event) {
-    event.preventDefault()
-    console.log(`post ${post.id} up button clicked!`)
-    let currentUserId = firebase.auth().currentUser.uid
 
-    let response = await fetch('/.netlify/functions/up', {
-      method: 'POST',
-      body: JSON.stringify({
-        postId: post.id,
-        userId: currentUserId
-      })
-    })
-    console.log(response.ok)
-    if (response.ok) {
-      console.log(response.ok)
-      let existingNumberOfUps = document.querySelector(`.post-${post.id} .ups`).innerHTML
-      console.log(existingNumberOfUps)
-      let newNumberOfUps = parseInt(existingNumberOfUps) + 1
-       console.log(newNumberOfUps)
-      document.querySelector(`.post-${post.id} .ups`).innerHTML = newNumberOfUps
+  // listen for the submit button on this post
+ let submitButton = document.querySelector(`.post-${post.id} .submit-button`)
+ submitButton.addEventListener('click', async function(event) {
+   event.preventDefault()
+   console.log(`post ${post.id} submit button clicked!`)
+   let currentUserId = firebase.auth().currentUser.uid
+   //here i need to pass a variable outside of the event listener and function. if we can do that, then we can assign the post.id (projectId) to all new posts!
+   formCheck = 'yes'
+   projectId = post.id
+   formStatus = 'image-url2'
+   //console.log(formCheck)
+   console.log(projectId)
 
-    }
-  })
+   let response = await fetch('/.netlify/functions/get_project_posts')
+   let posts = await response.json()
+   for (let i=0; i<posts.length; i++) {
+     let post = posts[i]
+     renderProjectPost(post)
+   }
 
+   document.querySelector('form').innerHTML = `
+     <div>
+       <form class="w-full mt-8">
+         <input type="text" id="image-url2" name="image-url2" placeholder="Design Image" class="my-2 p-2 w-64 border border-gray-400 rounded shadow-xl focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+         <button class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl">Test</button>
+       </form>
+     </div>
+   `
 
-      // listen for the down button on this post
-  let downButton = document.querySelector(`.post-${post.id} .down-button`)
-  downButton.addEventListener('click', async function(event) {
-    event.preventDefault()
-    console.log(`post ${post.id} down button clicked!`)
-    let currentUserId = firebase.auth().currentUser.uid
+    
 
-    let response = await fetch('/.netlify/functions/down', {
-      method: 'POST',
-      body: JSON.stringify({
-        postId: post.id,
-        userId: currentUserId
-      })
-    })
-    if (response.ok) {
-      let existingNumberOfDowns = document.querySelector(`.post-${post.id} .downs`).innerHTML
-      console.log(existingNumberOfDowns)
-      let newNumberOfDowns = parseInt(existingNumberOfDowns) + 1
-      console.log(newNumberOfDowns)
-      document.querySelector(`.post-${post.id} .downs`).innerHTML = newNumberOfDowns
-    }
-  })
+   // let response = await fetch('/.netlify/functions/get_project_posts', {
+   //   method: 'POST',
+   //   body: JSON.stringify({
+   //     postId: post.id,
+   //     userId: currentUserId
+   //   })
+   // })
+   /* console.log(response.ok)
+   if (response.ok) {
+     console.log(response.ok)
+     let existingNumberOfUps = document.querySelector(`.post-${post.id} .ups`).innerHTML
+     console.log(existingNumberOfUps)
+     let newNumberOfUps = parseInt(existingNumberOfUps) + 1
+      console.log(newNumberOfUps)
+     document.querySelector(`.post-${post.id} .ups`).innerHTML = newNumberOfUps
 
-  // listen for the post comment button on this post
+   } */
+ })
+    
+  
+ 
+ // console.log(projectId)
+  
+  
+  
+  
+
+  
+
+  /* // listen for the post comment button on this post
   let postCommentButton = document.querySelector(`.post-${postId} .post-comment-button`)
   postCommentButton.addEventListener('click', async function(event) {
     event.preventDefault()
@@ -212,10 +254,107 @@ async function renderPost(post) {
 
     // clears the comment input
     postCommentInput.value = ''
-  })
+  }) */
 }
 
-// given an Array of comment Objects, loop and return the HTML for the comments
+ 
+
+
+
+
+
+
+
+
+
+// render project posts
+async function renderProjectPost(post) {
+  let postId = post.id
+  projectId = postId
+  document.querySelector('.posts').innerHTML = `
+    <div class="post-${postId} md:mt-16 mt-8 space-y-8">
+      <div class="md:mx-0 mx-4">
+        <span class="font-bold text-xl">Designer ${post.username}</span>
+      </div>
+
+      <div>
+        <img src="${post.imageUrl}" class="w-full">
+      </div>
+
+
+      <div class="text-2xl md:mx-0 mx-4">
+           <button class="up-button"><img src="http://www.pngmart.com/files/10/Thumbs-UP-PNG-Transparent-Image.png" width="20" height="20" border="0" alt="javascript button"></button>
+            <span class="ups">${post.ups}</span>
+      
+            <button class="down-button"><img src="https://www.nicepng.com/png/detail/223-2238128_thumbs-down-emoji-discord-emoji-thumbs-down.png" width="20" height="20" border="0" alt="javascript button"></button>
+            <span class="downs">${post.downs}</span>     
+      </div>
+
+    
+    </div> 
+
+    
+  `
+// // listen for the up button on this post
+  // let upButton = document.querySelector(`.post-${post.id} .up-button`)
+  // upButton.addEventListener('click', async function(event) {
+  //   event.preventDefault()
+  //   console.log(`post ${post.id} up button clicked!`)
+  //   let currentUserId = firebase.auth().currentUser.uid
+
+  //   let response = await fetch('/.netlify/functions/up', {
+  //     method: 'POST',
+  //     body: JSON.stringify({
+  //       postId: post.id,
+  //       userId: currentUserId
+  //     })
+  //   })
+  //   console.log(response.ok)
+  //   if (response.ok) {
+  //     console.log(response.ok)
+  //     let existingNumberOfUps = document.querySelector(`.post-${post.id} .ups`).innerHTML
+  //     console.log(existingNumberOfUps)
+  //     let newNumberOfUps = parseInt(existingNumberOfUps) + 1
+  //      console.log(newNumberOfUps)
+  //     document.querySelector(`.post-${post.id} .ups`).innerHTML = newNumberOfUps
+
+  //   }
+  // })
+
+
+      // listen for the down button on this post
+      let downButton = document.querySelector(`.post-${post.id} .down-button`)
+      downButton.addEventListener('click', async function(event) {
+        event.preventDefault()
+        console.log(`post ${post.id} down button clicked!`)
+        let currentUserId = firebase.auth().currentUser.uid
+    
+        let response = await fetch('/.netlify/functions/down', {
+          method: 'POST',
+          body: JSON.stringify({
+            postId: post.id,
+            userId: currentUserId
+          })
+        })
+        if (response.ok) {
+          let existingNumberOfDowns = document.querySelector(`.post-${post.id} .downs`).innerHTML
+          console.log(existingNumberOfDowns)
+          let newNumberOfDowns = parseInt(existingNumberOfDowns) + 1
+          console.log(newNumberOfDowns)
+          document.querySelector(`.post-${post.id} .downs`).innerHTML = newNumberOfDowns
+        }
+      })
+
+
+      
+
+
+
+
+}
+
+
+/* // given an Array of comment Objects, loop and return the HTML for the comments
 function renderComments(comments) {
   if (comments) {
     let markup = ''
@@ -241,4 +380,4 @@ function renderCommentForm() {
     <button class="post-comment-button py-2 px-4 rounded-md shadow-sm font-medium text-white bg-purple-600 focus:outline-none">Post</button>
   `
   return commentForm
-}
+} */
